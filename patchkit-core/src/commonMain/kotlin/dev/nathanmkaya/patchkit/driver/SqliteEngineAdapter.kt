@@ -8,13 +8,36 @@ import dev.nathanmkaya.patchkit.engine.TransactionalEngine
 import dev.nathanmkaya.patchkit.model.SqlArg
 
 /**
- * TransactionalEngine backed by AndroidX SQLite KMP.
- * Uses a pre-opened SQLiteConnection (from BundledSQLiteDriver or any driver).
+ * Implementation of TransactionalEngine using AndroidX SQLite KMP.
  *
- * Notes:
- * - queryScalar reads the first column as TEXT, then parses to Int64/Real when possible.
- *   This keeps behavior consistent across platforms without relying on getColumnType().
- * - execute() returns affected row count via SELECT changes().
+ * This adapter provides cross-platform SQLite database access through the AndroidX SQLite
+ * KMP library, supporting Android, iOS, and JVM platforms with consistent behavior.
+ *
+ * ## Key Features:
+ * - **Cross-platform compatibility**: Works on Android, iOS, and JVM through AndroidX SQLite KMP
+ * - **Consistent type handling**: Reads columns as text and parses to appropriate types
+ * - **Transaction safety**: Proper BEGIN/COMMIT/ROLLBACK handling with immediate mode support
+ * - **Parameter binding**: Safe parameterized query support with strongly-typed arguments
+ *
+ * ## Implementation Notes:
+ * - `queryScalar` reads the first column as TEXT, then attempts parsing to Int64/Real for
+ *   consistent behavior across platforms without relying on driver-specific column type detection
+ * - `execute` returns affected row count via `SELECT changes()` following SQLite semantics
+ * - Connection should be thread-confined for SQLite safety requirements
+ *
+ * ## Usage:
+ * ```kotlin
+ * val driver = BundledSQLiteDriver()
+ * val connection = driver.open("database.db")
+ * val engine = SqliteEngineAdapter(connection)
+ * 
+ * // Use with PatchKit
+ * val patchKit = PatchKit(
+ *     registry = mapOf("main" to EngineProvider { engine })
+ * )
+ * ```
+ *
+ * @param connection Pre-opened SQLiteConnection from any AndroidX SQLite KMP driver
  */
 class SqliteEngineAdapter(
     private val connection: SQLiteConnection,
