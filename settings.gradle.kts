@@ -29,3 +29,5 @@ dependencyResolutionManagement {
 }
 
 include(":composeApp")
+// include(":patchkit-core")
+include(":patchkit-core")
