@@ -12,6 +12,7 @@ import okio.SYSTEM
 suspend fun PatchKit.applyPath(
     path: Path,
     fs: FileSystem = FileSystem.SYSTEM,
+    dryRun: Boolean = false,
 ): ExecutionReport {
     val meta = fs.metadata(path)
     require(meta.isRegularFile) { "Path is not a regular file: $path" }
@@ -28,7 +29,7 @@ suspend fun PatchKit.applyPath(
             ),
         )
     }
-    return apply(bytes)
+    return apply(bytes, dryRun)
 }
 
 /** Apply every file with the given extension in a directory (sorted by filename). */
@@ -36,6 +37,7 @@ suspend fun PatchKit.applyDirectory(
     directory: Path,
     fs: FileSystem = FileSystem.SYSTEM,
     extension: String = ".json",
+    dryRun: Boolean = false,
 ): List<ExecutionReport> {
     val meta = fs.metadata(directory)
     require(meta.isDirectory) { "Not a directory: $directory" }
@@ -48,7 +50,7 @@ suspend fun PatchKit.applyDirectory(
 
     val reports = mutableListOf<ExecutionReport>()
     for (p in files) {
-        reports += applyPath(p, fs)
+        reports += applyPath(p, fs, dryRun)
     }
     return reports
 }

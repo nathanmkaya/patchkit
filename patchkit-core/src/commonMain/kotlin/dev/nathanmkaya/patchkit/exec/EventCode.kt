@@ -40,8 +40,12 @@ enum class EventCode {
     POSTCHECK_FAIL,
     /** Entire patch executed successfully */
     PATCH_SUCCESS,
+    /** Dry-run completed successfully (rolled back via savepoint) */
+    PATCH_DRYRUN_SUCCESS,
     /** Patch execution failed */
     PATCH_FAILURE,
+    /** Dry-run execution rolled back savepoint */
+    DRYRUN_ROLLBACK,
 }
 
 /**

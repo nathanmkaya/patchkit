@@ -38,10 +38,18 @@ import dev.nathanmkaya.patchkit.model.SqlArg
  * ```
  *
  * @param connection Pre-opened SQLiteConnection from any AndroidX SQLite KMP driver
+ * @param busyTimeoutMs Value applied to `PRAGMA busy_timeout`; defaults to 5000ms
  */
 class SqliteEngineAdapter(
     private val connection: SQLiteConnection,
+    private val busyTimeoutMs: Long = 5_000,
 ) : TransactionalEngine {
+    init {
+        if (busyTimeoutMs > 0) {
+            connection.execSQL("PRAGMA busy_timeout = $busyTimeoutMs")
+        }
+    }
+
     override suspend fun queryScalar(
         sql: String,
         args: List<SqlArg>,

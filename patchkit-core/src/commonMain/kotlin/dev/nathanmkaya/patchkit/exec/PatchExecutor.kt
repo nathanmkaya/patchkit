@@ -31,6 +31,7 @@ class PatchExecutor(
         patch: Patch,
         engine: TransactionalEngine,
         totalTimeoutMs: Long,
+        dryRun: Boolean = false,
     ): ExecutionReport =
         withTimeout(totalTimeoutMs) {
             val events = mutableListOf<ExecutionEvent>()
@@ -71,6 +72,9 @@ class PatchExecutor(
                 events += event(EventCode.TX_BEGIN, "Transaction started (IMMEDIATE)")
                 try {
                     engine.inTransaction(immediate = true) {
+                        if (dryRun) {
+                            engine.execute("SAVEPOINT patchkit_dryrun")
+                        }
                         for (a in patch.actions) {
                             val label =
                                 a.description ?: when (a) {
@@ -103,6 +107,11 @@ class PatchExecutor(
                                     )
                                 throw t
                             }
+                        }
+                        if (dryRun) {
+                            engine.execute("ROLLBACK TO patchkit_dryrun")
+                            engine.execute("RELEASE patchkit_dryrun")
+                            events += event(EventCode.DRYRUN_ROLLBACK, "Dry-run rolled back changes")
                         }
                     }
                     events += event(EventCode.TX_COMMIT, "Transaction committed")
@@ -146,7 +155,9 @@ class PatchExecutor(
                 if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPost() } else runPost()
 
                 // -------- Success
-                events += event(EventCode.PATCH_SUCCESS, "Patch ${patch.id} applied successfully")
+                val successEvent =
+                    if (dryRun) EventCode.PATCH_DRYRUN_SUCCESS else EventCode.PATCH_SUCCESS
+                events += event(successEvent, "Patch ${patch.id} applied successfully")
                 ExecutionReport(patch.id, events, startTime, now(), totalRows)
             } catch (t: Throwable) {
                 // Note: TX_ROLLBACK is emitted by engine implementation if desired;

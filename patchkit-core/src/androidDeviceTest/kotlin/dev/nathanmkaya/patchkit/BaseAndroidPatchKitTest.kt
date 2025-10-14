@@ -51,7 +51,8 @@ abstract class BaseAndroidPatchKitTest {
     protected suspend fun applyPatch(
         patchJson: String,
         config: PatchKitConfig = PatchKitConfig(),
-    ): ExecutionReport = patchKit(config).apply(patchJson)
+        dryRun: Boolean = false,
+    ): ExecutionReport = patchKit(config).apply(patchJson, dryRun)
 
     private fun patchKit(config: PatchKitConfig = PatchKitConfig()): PatchKit =
         PatchKit(mapOf("main" to EngineProvider(connection)), config)

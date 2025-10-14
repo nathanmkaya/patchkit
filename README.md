@@ -67,6 +67,8 @@ val patchKit = PatchKit(
 )
 ```
 
+`SqliteEngineAdapter` applies `PRAGMA busy_timeout = 5000` by default; pass `EngineProvider(connection, busyTimeoutMs = ...)` to tune it per deployment. Timeouts in `PatchKitConfig` are best-effort (native calls can block); keep actions short and rely on busy timeouts to bound lock contention.
+
 ### 3. Define Patches
 
 ```json
@@ -118,17 +120,27 @@ val patchKit = PatchKit(
 ```kotlin
 suspend fun applyPatch(patchJson: String): ExecutionReport {
     val report = patchKit.apply(patchJson.encodeToByteArray())
-    
+
     if (report.success) {
         println("✅ Patch ${report.patchId} applied successfully")
         println("📊 Affected ${report.affectedRows} rows in ${report.durationMs}ms")
     } else {
         println("❌ Patch failed: ${report.events.last().message}")
     }
-    
+
     return report
 }
 ```
+
+#### Dry-run a patch
+
+```kotlin
+val dryRun = patchKit.apply(patchJson.encodeToByteArray(), dryRun = true)
+println(dryRun.success)            // false – no PATCH_SUCCESS event
+println(dryRun.events.last().code) // DRYRUN_ROLLBACK indicates the savepoint was rolled back
+```
+
+Dry runs skip idempotency initialization/recording, so use a full apply before promoting a patch to production.
 
 ## Patch Format
 

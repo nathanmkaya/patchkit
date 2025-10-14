@@ -90,4 +90,16 @@ class AdapterIntegrationTest {
             assertFalse(report2.success) // skip => no PATCH_SUCCESS
             assertTrue(report2.events.any { it.code == EventCode.IDEMPOTENT_SKIP })
         }
+
+    @Test
+    fun adapter_sets_busy_timeout() =
+        runTest {
+            val connection = BundledSQLiteDriver().open(":memory:")
+            SqliteEngineAdapter(connection, busyTimeoutMs = 7_500)
+
+            connection.prepare("PRAGMA busy_timeout").use { stmt ->
+                assertTrue(stmt.step())
+                assertEquals(7_500, stmt.getInt(0))
+            }
+        }
 }

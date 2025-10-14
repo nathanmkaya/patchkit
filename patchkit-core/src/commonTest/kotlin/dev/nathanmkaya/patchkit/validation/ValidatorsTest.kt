@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import dev.nathanmkaya.patchkit.validation.SelectActionValidator
 
 class ValidatorsTest {
     // ---------- helpers ----------
@@ -48,25 +49,39 @@ class ValidatorsTest {
 
     // ---------- DmlOnlyValidator ----------
     @Test
-    fun dml_only_allows_dml_and_blocks_ddl() =
+    fun dml_only_allows_configured_verbs_and_pragmas() =
         runTest {
             val ok =
                 patchWithActions(
-                    SqlAction("UPDATE t SET x=1"),
-                    ParameterizedSqlAction("INSERT INTO t(a) VALUES(?)", listOf(SqlArg.Int64(1))),
+                    SqlAction("-- comment\nUPDATE t SET x=1"),
+                    ParameterizedSqlAction("  insert into t(a) values(?)  ", listOf(SqlArg.Int64(1))),
+                    SqlAction("WITH cte AS (SELECT 1) UPDATE t SET x=2"),
+                    SqlAction("PRAGMA foreign_keys = ON"),
                 )
-            val ddlCreate = patchWithActions(SqlAction("CREATE TABLE t(x INTEGER)"))
-            val ddlAlter = patchWithActions(SqlAction("ALTER TABLE t ADD COLUMN y INTEGER"))
+            val badVerb = patchWithActions(SqlAction("TRUNCATE TABLE t"))
+            val badPragma = patchWithActions(SqlAction("PRAGMA writable_schema = ON"))
 
-            val dmlOnly = DmlOnlyValidator()
-            assertTrue(dmlOnly.validate(ok, null) is ValidationResult.Success)
+            val validator = DmlOnlyValidator()
+            val success = validator.validate(ok, null)
+            assertTrue(success is ValidationResult.Success)
 
-            val r1 = dmlOnly.validate(ddlCreate, null)
-            assertTrue(r1 is ValidationResult.Failure)
-            assertEquals("DDL_NOT_ALLOWED", (r1 as ValidationResult.Failure).code)
+            val badVerbResult = validator.validate(badVerb, null)
+            assertTrue(badVerbResult is ValidationResult.Failure)
+            assertEquals("TRUNCATE_NOT_ALLOWED", (badVerbResult as ValidationResult.Failure).code)
 
-            val r2 = dmlOnly.validate(ddlAlter, null)
-            assertTrue(r2 is ValidationResult.Failure)
+            val badPragmaResult = validator.validate(badPragma, null)
+            assertTrue(badPragmaResult is ValidationResult.Failure)
+            assertEquals("PRAGMA_NOT_ALLOWED", (badPragmaResult as ValidationResult.Failure).code)
+        }
+
+    @Test
+    fun select_actions_are_rejected() =
+        runTest {
+            val patch = patchWithActions(SqlAction("SELECT * FROM t"))
+            val validator = SelectActionValidator()
+            val result = validator.validate(patch, null)
+            assertTrue(result is ValidationResult.Failure)
+            assertEquals("SELECT_NOT_ALLOWED", (result as ValidationResult.Failure).code)
         }
 
     // ---------- MultiStatementValidator ----------

@@ -78,11 +78,21 @@ kotlin {
                 implementation(libs.androidx.runner)
                 implementation(libs.androidx.core)
                 implementation(libs.androidx.testExt.junit)
+                implementation(libs.sqlite.android)
             }
         }
 
         iosMain {
             dependencies {
+            }
+        }
+
+        val androidHostTestName = listOf("androidHostTest", "androidUnitTest").first { n ->
+            sourceSets.findByName(n) != null
+        }
+        getByName(androidHostTestName) {
+            dependencies {
+                implementation(libs.sqlite.jvm)
             }
         }
     }

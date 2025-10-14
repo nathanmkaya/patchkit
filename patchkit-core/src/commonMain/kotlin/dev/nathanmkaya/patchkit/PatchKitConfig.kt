@@ -15,6 +15,7 @@ import dev.nathanmkaya.patchkit.validation.MultiStatementValidator
 import dev.nathanmkaya.patchkit.validation.PatchValidator
 import dev.nathanmkaya.patchkit.validation.SizeValidator
 import dev.nathanmkaya.patchkit.validation.ValidationResult
+import dev.nathanmkaya.patchkit.validation.SelectActionValidator
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -85,6 +86,7 @@ class PatchKit(
             add(MultiStatementValidator())
             if (config.verifyHash) add(HashValidator())
             if (!config.allowDDL) add(DmlOnlyValidator())
+            add(SelectActionValidator())
         }
 
     private val executor =
@@ -101,20 +103,25 @@ class PatchKit(
      * This method orchestrates the complete patch application lifecycle:
      * 1. **Parse**: Deserialize JSON patch with strict validation
      * 2. **Validate**: Run validation chain (size, hash, DDL restrictions, etc.)
-     * 3. **Idempotency Check**: Skip if patch already applied successfully
+     * 3. **Idempotency Check**: Skip if patch already applied successfully (disabled in dry-run mode)
      * 4. **Preconditions**: Verify database state meets patch requirements
-     * 5. **Execute Actions**: Run all actions within single IMMEDIATE transaction
+     * 5. **Execute Actions**: Run all actions within single IMMEDIATE transaction (dry runs wrap actions in a savepoint and roll back)
      * 6. **Postconditions**: Validate resulting database state
-     * 7. **Record Success**: Mark patch as applied for future idempotency
+     * 7. **Record Success**: Mark patch as applied for future idempotency (disabled in dry-run mode)
      *
      * All actions execute within a single ACID transaction. If any step fails, the entire
      * transaction rolls back and no changes are persisted.
      *
      * @param rawPatchBytes The JSON patch as byte array
+     * @param dryRun When true, executes actions inside a savepoint and rolls back instead of committing;
+     *               idempotency bookkeeping is skipped and the resulting report omits PATCH_SUCCESS.
      * @return ExecutionReport containing detailed timeline, success status, and affected row count
      * @throws IllegalArgumentException if patch targets an unknown database
      */
-    suspend fun apply(rawPatchBytes: ByteArray): ExecutionReport {
+    suspend fun apply(
+        rawPatchBytes: ByteArray,
+        dryRun: Boolean = false,
+    ): ExecutionReport {
         val start = now()
         val events = mutableListOf<ExecutionEvent>()
 
@@ -140,18 +147,21 @@ class PatchKit(
             val engine = provider.provide()
 
             // --- Idempotency
-            config.idempotency?.initialize(engine)
-            if (config.idempotency?.hasBeenApplied(patch.id, engine) == true) {
-                events += event(EventCode.IDEMPOTENT_SKIP, "Patch ${patch.id} already applied")
-                return ExecutionReport(patch.id, events, start, now())
+            val idempotencyManager = config.idempotency
+            if (!dryRun) {
+                idempotencyManager?.initialize(engine)
+                if (idempotencyManager?.hasBeenApplied(patch.id, engine) == true) {
+                    events += event(EventCode.IDEMPOTENT_SKIP, "Patch ${patch.id} already applied")
+                    return ExecutionReport(patch.id, events, start, now())
+                }
             }
 
             // --- Execute
-            val report = executor.execute(patch, engine, config.totalTimeoutMs)
+            val report = executor.execute(patch, engine, config.totalTimeoutMs, dryRun)
 
             // --- Record success
-            if (report.success) {
-                config.idempotency?.recordApplication(patch.id, engine, patch.metadata.toString())
+            if (!dryRun && report.success) {
+                idempotencyManager?.recordApplication(patch.id, engine, patch.metadata.toString())
             }
             // We return the executor's report directly (it already contains the timeline)
             report

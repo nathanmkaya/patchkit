@@ -65,6 +65,22 @@ class ValidationAndSecurityAndroidTest : BaseAndroidPatchKitTest() {
         }
 
     @Test
+    fun select_action_is_rejected() =
+        runBlocking {
+            val patch =
+                patchJson(
+                    id = "select-action",
+                    actions = listOf(sql("SELECT * FROM accounts")),
+                )
+
+            val report = applyPatch(patch)
+            assertFalse(report.success)
+            val validation = report.events.firstOrNull { it.code == EventCode.VALIDATION_FAIL }
+            val code = validation?.detail?.get("code")
+            assertTrue(code == "SELECT_NOT_ALLOWED")
+        }
+
+    @Test
     fun hash_mismatch_fails_validation() =
         runBlocking {
             val patch =
