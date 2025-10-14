@@ -50,7 +50,6 @@ cryptography-provider = { group = "dev.whyoleg.cryptography", name = "cryptograp
 
 sqlite = { group = "androidx.sqlite", name = "sqlite", version.ref = "sqlite" }
 sqlite-bundled = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
-sqlite-jvm = { group = "androidx.sqlite", name = "sqlite-bundled-jvm", version.ref = "sqlite" }
 
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 

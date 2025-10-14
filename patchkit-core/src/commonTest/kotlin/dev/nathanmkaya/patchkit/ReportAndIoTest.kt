@@ -130,7 +130,7 @@ class ReportAndIoTest {
 
     /** Create a throwaway directory like build/tmp/patchkit-abc123 (multiplatform). */
     private fun createTempDirectory(
-        base: okio.Path = "build/tmp".toPath(),
+        base: okio.Path = okio.FileSystem.SYSTEM_TEMPORARY_DIRECTORY,
         prefix: String = "patchkit-",
         fs: okio.FileSystem = okio.FileSystem.SYSTEM,
     ): okio.Path {
