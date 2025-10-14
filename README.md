@@ -364,8 +364,6 @@ data class ExecutionReport(
 
 - **Android**: Full support via AndroidX SQLite
 - **iOS**: Full support via Native SQLite bindings
-- **JVM**: Full support for server applications
-- **JavaScript**: Planned (contributions welcome)
 
 ## Advanced Topics
 

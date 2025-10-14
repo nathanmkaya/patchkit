@@ -49,7 +49,7 @@ class SqliteEngineAdapter(
         connection.prepare(sql).use { stmt ->
             bindArgs(stmt, args)
             val hasRow = stmt.step()
-            if (!hasRow) return SqlScalar.Null
+            if (!hasRow) return null
             // Read as text, parse numeric if possible (robust across drivers)
             val text = stmt.getText(0) ?: return SqlScalar.Null
             text.toLongOrNull()?.let { return SqlScalar.Int64(it) }

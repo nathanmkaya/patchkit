@@ -3,7 +3,7 @@ package dev.nathanmkaya.patchkit.exec
 import dev.nathanmkaya.patchkit.engine.PostconditionFailedException
 import dev.nathanmkaya.patchkit.engine.PreconditionFailedException
 import dev.nathanmkaya.patchkit.engine.TransactionalEngine
-import dev.nathanmkaya.patchkit.engine.asLongOrZero
+import dev.nathanmkaya.patchkit.engine.requireLong
 import dev.nathanmkaya.patchkit.model.ParameterizedSqlAction
 import dev.nathanmkaya.patchkit.model.Patch
 import dev.nathanmkaya.patchkit.model.SqlAction
@@ -42,7 +42,13 @@ class PatchExecutor(
                 events += event(EventCode.PRECHECK_START, "Checking ${patch.preconditions.size} preconditions")
                 val runPre: suspend () -> Unit = {
                     for (c in patch.preconditions) {
-                        val actual = engine.queryScalar(c.sql).asLongOrZero()
+                        val label = c.description ?: c.sql
+                        val actual =
+                            try {
+                                engine.queryScalar(c.sql).requireLong(label)
+                            } catch (iae: IllegalStateException) {
+                                throw PreconditionFailedException(iae.message ?: "Precondition '$label' failed: non-numeric result")
+                            }
                         if (!c.operator.evaluate(actual, c.expected)) {
                             events +=
                                 event(
@@ -62,51 +68,65 @@ class PatchExecutor(
                 if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPre() } else runPre()
 
                 // -------- Actions (single tx)
-                engine.inTransaction(immediate = true) {
-                    events += event(EventCode.TX_BEGIN, "Transaction started (IMMEDIATE)")
-
-                    for (a in patch.actions) {
-                        val label =
-                            a.description ?: when (a) {
-                                is SqlAction -> a.sql.take(50)
-                                is ParameterizedSqlAction -> a.sql.take(50)
-                            }
-                        events += event(EventCode.ACTION_START, label)
-
-                        try {
-                            val rows =
-                                withTimeout(config.perActionTimeoutMs) {
-                                    when (a) {
-                                        is SqlAction -> engine.execute(a.sql)
-                                        is ParameterizedSqlAction -> engine.execute(a.sql, a.parameters)
-                                    }
+                events += event(EventCode.TX_BEGIN, "Transaction started (IMMEDIATE)")
+                try {
+                    engine.inTransaction(immediate = true) {
+                        for (a in patch.actions) {
+                            val label =
+                                a.description ?: when (a) {
+                                    is SqlAction -> a.sql.take(50)
+                                    is ParameterizedSqlAction -> a.sql.take(50)
                                 }
-                            totalRows += rows
-                            events +=
-                                event(
-                                    EventCode.ACTION_OK,
-                                    label,
-                                    mapOf("rows" to rows.toString()),
-                                )
-                        } catch (t: Throwable) {
-                            events +=
-                                event(
-                                    EventCode.ACTION_FAIL,
-                                    label,
-                                    mapOf("exception" to (t::class.simpleName ?: "Exception")),
-                                )
-                            throw t
+                            events += event(EventCode.ACTION_START, label)
+
+                            try {
+                                val rows =
+                                    withTimeout(config.perActionTimeoutMs) {
+                                        when (a) {
+                                            is SqlAction -> engine.execute(a.sql)
+                                            is ParameterizedSqlAction -> engine.execute(a.sql, a.parameters)
+                                        }
+                                    }
+                                totalRows += rows
+                                events +=
+                                    event(
+                                        EventCode.ACTION_OK,
+                                        label,
+                                        mapOf("rows" to rows.toString()),
+                                    )
+                            } catch (t: Throwable) {
+                                events +=
+                                    event(
+                                        EventCode.ACTION_FAIL,
+                                        label,
+                                        mapOf("exception" to (t::class.simpleName ?: "Exception")),
+                                    )
+                                throw t
+                            }
                         }
                     }
-
                     events += event(EventCode.TX_COMMIT, "Transaction committed")
+                } catch (t: Throwable) {
+                    events +=
+                        event(
+                            EventCode.TX_ROLLBACK,
+                            "Transaction rolled back",
+                            mapOf("exception" to (t::class.simpleName ?: "Exception")),
+                        )
+                    throw t
                 }
 
                 // -------- Postconditions
                 events += event(EventCode.POSTCHECK_START, "Checking ${patch.postconditions.size} postconditions")
                 val runPost: suspend () -> Unit = {
                     for (c in patch.postconditions) {
-                        val actual = engine.queryScalar(c.sql).asLongOrZero()
+                        val label = c.description ?: c.sql
+                        val actual =
+                            try {
+                                engine.queryScalar(c.sql).requireLong(label)
+                            } catch (iae: IllegalStateException) {
+                                throw PostconditionFailedException(iae.message ?: "Postcondition '$label' failed: non-numeric result")
+                            }
                         if (!c.operator.evaluate(actual, c.expected)) {
                             events +=
                                 event(

@@ -47,8 +47,8 @@ class EngineSpiTest {
             val e1 = eng.execute("UPDATE t SET x = ?", listOf(SqlArg.Text("v")))
             val e2 = eng.execute("DELETE FROM t WHERE id = 1")
 
-            assertEquals(5L, s1.asLongOrZero())
-            assertEquals(10L, s2.asLongOrZero()) // Text coercion
+            assertEquals(5L, s1.requireLong("count"))
+            assertEquals(10L, s2.requireLong("text count")) // Text coercion
             assertEquals(3, e1)
             assertEquals(0, e2)
 
@@ -57,4 +57,16 @@ class EngineSpiTest {
             assertEquals(listOf(SqlArg.Int64(7)), eng.queries[1].second)
             assertEquals(listOf(SqlArg.Text("v")), eng.executions[0].second)
         }
+
+    @Test
+    fun requireLong_parses_numeric_text() {
+        assertEquals(42L, SqlScalar.Text("42").requireLong("test"))
+    }
+
+    @Test
+    fun requireLong_fails_on_null() {
+        assertFailsWith<IllegalStateException> {
+            (null as SqlScalar?).requireLong("test")
+        }
+    }
 }

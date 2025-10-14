@@ -29,11 +29,20 @@ sealed interface SqlScalar {
     ) : SqlScalar
 }
 
-/** Convenience coercions for numeric comparisons in conditions. */
-fun SqlScalar?.asLongOrZero(): Long =
+/**
+ * Require a numeric scalar; throws if the value is null/non-numeric.
+ * Use a descriptive label to make errors self-explanatory in logs.
+ */
+fun SqlScalar?.requireLong(label: String): Long =
     when (this) {
         is SqlScalar.Int64 -> v
         is SqlScalar.Real -> v.toLong()
-        is SqlScalar.Text -> v.toLongOrNull() ?: 0L
-        else -> 0L
+        is SqlScalar.Text ->
+            v.toLongOrNull()
+                ?: error("Condition '$label' must return a numeric value, got TEXT")
+        null,
+        SqlScalar.Null,
+        is SqlScalar.Blob -> error(
+            "Condition '$label' must return a numeric value, got ${this?.let { it::class.simpleName } ?: "null"}",
+        )
     }

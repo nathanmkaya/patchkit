@@ -8,6 +8,8 @@ import dev.nathanmkaya.patchkit.model.SqlAction
 import dev.nathanmkaya.patchkit.model.SqlArg
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ValidatorsTest {
     // ---------- helpers ----------

@@ -28,9 +28,9 @@ import dev.nathanmkaya.patchkit.engine.SqliteEngine
  *     }
  *     
  *     override suspend fun hasBeenApplied(patchId: String, engine: SqliteEngine): Boolean {
- *         val count = engine.queryScalar("SELECT COUNT(*) FROM applied_patches WHERE patch_id = ?", 
+ *         val count = engine.queryScalar("SELECT COUNT(*) FROM applied_patches WHERE patch_id = ?",
  *                                       listOf(SqlArg.Text(patchId)))
- *         return count?.let { it.asLongOrZero() > 0 } ?: false
+ *         return count.requireLong("applied_patches") > 0
  *     }
  *     
  *     override suspend fun recordApplication(patchId: String, engine: SqliteEngine, metadata: String?) {

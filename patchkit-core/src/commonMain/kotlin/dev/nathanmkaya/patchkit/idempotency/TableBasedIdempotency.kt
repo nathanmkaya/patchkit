@@ -1,7 +1,7 @@
 package dev.nathanmkaya.patchkit.idempotency
 
-import dev.nathanmkaya.patchkit.engine.SqlScalar
 import dev.nathanmkaya.patchkit.engine.SqliteEngine
+import dev.nathanmkaya.patchkit.engine.requireLong
 import dev.nathanmkaya.patchkit.model.SqlArg
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -41,13 +41,7 @@ class TableBasedIdempotency(
                 "SELECT COUNT(*) FROM $tableName WHERE patch_id = ?",
                 listOf(SqlArg.Text(patchId)),
             )
-        val count =
-            when (scalar) {
-                is SqlScalar.Int64 -> scalar.v
-                is SqlScalar.Real -> scalar.v.toLong()
-                is SqlScalar.Text -> scalar.v.toLongOrNull() ?: 0L
-                else -> 0L
-            }
+        val count = scalar.requireLong("idempotency:$patchId")
         return count > 0
     }
 
