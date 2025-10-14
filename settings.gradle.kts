@@ -1,4 +1,5 @@
 rootProject.name = "PatchKit"
+
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -29,5 +30,6 @@ dependencyResolutionManagement {
 }
 
 include(":composeApp")
+
 // include(":patchkit-core")
 include(":patchkit-core")

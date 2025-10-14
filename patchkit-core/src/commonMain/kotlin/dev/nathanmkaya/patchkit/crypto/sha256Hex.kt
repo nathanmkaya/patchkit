@@ -6,10 +6,7 @@ import dev.whyoleg.cryptography.algorithms.SHA256
 /** Multiplatform SHA-256 → lowercase hex via cryptography-kotlin. */
 suspend fun sha256Hex(bytes: ByteArray): String {
     // Provider is selected per platform by the "optimal" dependency
-    val hasher =
-        CryptographyProvider.Default
-            .get(SHA256)
-            .hasher()
+    val hasher = CryptographyProvider.Default.get(SHA256).hasher()
 
     val digest: ByteArray = hasher.hash(bytes)
     return digest.toHexLower()
@@ -26,4 +23,5 @@ private fun ByteArray.toHexLower(): String {
     return out.concatToString()
 }
 
-private val HEX = charArrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
+private val HEX =
+    charArrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')

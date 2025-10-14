@@ -26,7 +26,7 @@ suspend fun PatchKit.applyPath(
                 EventCode.VALIDATION_FAIL,
                 "Empty patch input",
                 detail = mapOf("code" to "EMPTY_INPUT", "path" to path.toString()),
-            ),
+            )
         )
     }
     return apply(bytes, dryRun)
@@ -43,8 +43,7 @@ suspend fun PatchKit.applyDirectory(
     require(meta.isDirectory) { "Not a directory: $directory" }
 
     val files =
-        fs
-            .list(directory)
+        fs.list(directory)
             .filter { p -> fs.metadata(p).isRegularFile && p.name.endsWith(extension) }
             .sortedBy { it.name }
 

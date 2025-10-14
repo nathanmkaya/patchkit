@@ -7,18 +7,14 @@ import dev.nathanmkaya.patchkit.model.SqlAction
 /**
  * Enforces a positive allowlist of DML operations.
  *
- * The statement's first significant keyword (after stripping comments/whitespace)
- * must be one of the allowed verbs. PRAGMA statements are only accepted when they
- * target a known-safe pragma.
+ * The statement's first significant keyword (after stripping comments/whitespace) must be one of
+ * the allowed verbs. PRAGMA statements are only accepted when they target a known-safe pragma.
  */
 class DmlOnlyValidator : PatchValidator {
     private val allowedVerbs = setOf("INSERT", "UPDATE", "DELETE", "REPLACE", "WITH")
     private val allowedPragmas = setOf("foreign_keys", "defer_foreign_keys", "busy_timeout")
 
-    override suspend fun validate(
-        patch: Patch,
-        rawBytes: ByteArray?,
-    ): ValidationResult {
+    override suspend fun validate(patch: Patch, rawBytes: ByteArray?): ValidationResult {
         for (action in patch.actions) {
             val sql =
                 when (action) {

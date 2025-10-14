@@ -6,44 +6,25 @@ plugins {
 }
 
 kotlin {
-
     androidLibrary {
         namespace = "dev.nathanmkaya.patchkit"
-        compileSdk =
-            libs.versions.android.compileSdk
-                .get()
-                .toInt()
-        minSdk =
-            libs.versions.android.minSdk
-                .get()
-                .toInt()
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
 
-        withHostTestBuilder {
-        }
+        withHostTestBuilder {}
 
-        withDeviceTestBuilder {
-            sourceSetTreeName = "test"
-        }.configure {
-            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        }
+        withDeviceTestBuilder { sourceSetTreeName = "test" }
+            .configure { instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
 
         compilations.configureEach {
             compilerOptions.configure {
-                jvmTarget.set(
-                    org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17,
-                )
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
         }
     }
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "patchkit-coreKit"
-        }
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+        iosTarget.binaries.framework { baseName = "patchkit-coreKit" }
     }
 
     sourceSets {
@@ -68,10 +49,7 @@ kotlin {
             }
         }
 
-        androidMain {
-            dependencies {
-            }
-        }
+        androidMain { dependencies {} }
 
         getByName("androidDeviceTest") {
             dependencies {
@@ -82,18 +60,12 @@ kotlin {
             }
         }
 
-        iosMain {
-            dependencies {
-            }
-        }
+        iosMain { dependencies {} }
 
-        val androidHostTestName = listOf("androidHostTest", "androidUnitTest").first { n ->
-            sourceSets.findByName(n) != null
-        }
-        getByName(androidHostTestName) {
-            dependencies {
-                implementation(libs.sqlite.jvm)
+        val androidHostTestName =
+            listOf("androidHostTest", "androidUnitTest").first { n ->
+                sourceSets.findByName(n) != null
             }
-        }
+        getByName(androidHostTestName) { dependencies { implementation(libs.sqlite.jvm) } }
     }
 }

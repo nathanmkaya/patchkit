@@ -28,26 +28,17 @@ class FakeEngine : TransactionalEngine {
         executeQueue.addLast(affected)
     }
 
-    override suspend fun queryScalar(
-        sql: String,
-        args: List<SqlArg>,
-    ): SqlScalar? {
+    override suspend fun queryScalar(sql: String, args: List<SqlArg>): SqlScalar? {
         queries += sql to args
         return if (scalarQueue.isEmpty()) SqlScalar.Null else scalarQueue.removeFirst()
     }
 
-    override suspend fun execute(
-        sql: String,
-        args: List<SqlArg>,
-    ): Int {
+    override suspend fun execute(sql: String, args: List<SqlArg>): Int {
         executions += sql to args
         return if (executeQueue.isEmpty()) 0 else executeQueue.removeFirst()
     }
 
-    override suspend fun <T> inTransaction(
-        immediate: Boolean,
-        block: suspend () -> T,
-    ): T {
+    override suspend fun <T> inTransaction(immediate: Boolean, block: suspend () -> T): T {
         if (immediate) beganImmediate++ else beganDeferred++
         return try {
             val result = block()

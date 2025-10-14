@@ -6,10 +6,7 @@ import dev.nathanmkaya.patchkit.model.SqlAction
 
 /** Rejects actions whose first significant keyword is SELECT. */
 class SelectActionValidator : PatchValidator {
-    override suspend fun validate(
-        patch: Patch,
-        rawBytes: ByteArray?,
-    ): ValidationResult {
+    override suspend fun validate(patch: Patch, rawBytes: ByteArray?): ValidationResult {
         for (action in patch.actions) {
             val sql =
                 when (action) {
@@ -32,8 +29,10 @@ class SelectActionValidator : PatchValidator {
         val length = sql.length
         while (index < length) {
             when {
-                sql.startsWith("--", index) -> index = sql.indexOf('\n', index).takeIf { it >= 0 }?.plus(1) ?: length
-                sql.startsWith("/*", index) -> index = sql.indexOf("*/", index + 2).takeIf { it >= 0 }?.plus(2) ?: length
+                sql.startsWith("--", index) ->
+                    index = sql.indexOf('\n', index).takeIf { it >= 0 }?.plus(1) ?: length
+                sql.startsWith("/*", index) ->
+                    index = sql.indexOf("*/", index + 2).takeIf { it >= 0 }?.plus(2) ?: length
                 sql[index].isWhitespace() -> index++
                 else -> {
                     var end = index

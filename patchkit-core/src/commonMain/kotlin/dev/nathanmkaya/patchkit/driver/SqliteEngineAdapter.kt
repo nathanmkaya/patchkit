@@ -10,8 +10,8 @@ import dev.nathanmkaya.patchkit.model.SqlArg
 /**
  * Implementation of TransactionalEngine using AndroidX SQLite KMP.
  *
- * This adapter provides cross-platform SQLite database access through the AndroidX SQLite
- * KMP library, supporting Android, iOS, and JVM platforms with consistent behavior.
+ * This adapter provides cross-platform SQLite database access through the AndroidX SQLite KMP
+ * library, supporting Android, iOS, and JVM platforms with consistent behavior.
  *
  * ## Key Features:
  * - **Cross-platform compatibility**: Works on Android, iOS, and JVM through AndroidX SQLite KMP
@@ -30,7 +30,7 @@ import dev.nathanmkaya.patchkit.model.SqlArg
  * val driver = BundledSQLiteDriver()
  * val connection = driver.open("database.db")
  * val engine = SqliteEngineAdapter(connection)
- * 
+ *
  * // Use with PatchKit
  * val patchKit = PatchKit(
  *     registry = mapOf("main" to EngineProvider { engine })
@@ -50,26 +50,24 @@ class SqliteEngineAdapter(
         }
     }
 
-    override suspend fun queryScalar(
-        sql: String,
-        args: List<SqlArg>,
-    ): SqlScalar? {
+    override suspend fun queryScalar(sql: String, args: List<SqlArg>): SqlScalar? {
         connection.prepare(sql).use { stmt ->
             bindArgs(stmt, args)
             val hasRow = stmt.step()
             if (!hasRow) return null
             // Read as text, parse numeric if possible (robust across drivers)
             val text = stmt.getText(0) ?: return SqlScalar.Null
-            text.toLongOrNull()?.let { return SqlScalar.Int64(it) }
-            text.toDoubleOrNull()?.let { return SqlScalar.Real(it) }
+            text.toLongOrNull()?.let {
+                return SqlScalar.Int64(it)
+            }
+            text.toDoubleOrNull()?.let {
+                return SqlScalar.Real(it)
+            }
             return SqlScalar.Text(text)
         }
     }
 
-    override suspend fun execute(
-        sql: String,
-        args: List<SqlArg>,
-    ): Int {
+    override suspend fun execute(sql: String, args: List<SqlArg>): Int {
         // Execute the statement
         connection.prepare(sql).use { stmt ->
             bindArgs(stmt, args)
@@ -82,10 +80,7 @@ class SqliteEngineAdapter(
         }
     }
 
-    override suspend fun <T> inTransaction(
-        immediate: Boolean,
-        block: suspend () -> T,
-    ): T {
+    override suspend fun <T> inTransaction(immediate: Boolean, block: suspend () -> T): T {
         // Mirrors SQLite docs; BEGIN IMMEDIATE is our default per RFC.
         connection.execSQL(if (immediate) "BEGIN IMMEDIATE" else "BEGIN")
         return try {
@@ -98,10 +93,7 @@ class SqliteEngineAdapter(
         }
     }
 
-    private fun bindArgs(
-        stmt: SQLiteStatement,
-        args: List<SqlArg>,
-    ) {
+    private fun bindArgs(stmt: SQLiteStatement, args: List<SqlArg>) {
         // 1-based indices in SQLite
         args.forEachIndexed { idx, arg ->
             val i = idx + 1

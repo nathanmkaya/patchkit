@@ -9,10 +9,9 @@ import kotlinx.serialization.json.Json
  * - Uses "type" as the polymorphic discriminator
  */
 object PatchKitJson {
-    val strict: Json =
-        Json {
-            ignoreUnknownKeys = false
-            encodeDefaults = true
-            classDiscriminator = "type"
-        }
+    val strict: Json = Json {
+        ignoreUnknownKeys = false
+        encodeDefaults = true
+        classDiscriminator = "type"
+    }
 }

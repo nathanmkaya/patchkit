@@ -7,13 +7,12 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /**
- * Default SQL-backed idempotency using a simple table.
- * Safe to use with SQLite; CREATE statements are executed outside the mutating tx.
+ * Default SQL-backed idempotency using a simple table. Safe to use with SQLite; CREATE statements
+ * are executed outside the mutating tx.
  */
 @OptIn(ExperimentalTime::class)
-class TableBasedIdempotency(
-    private val tableName: String = "_patchkit_applied",
-) : IdempotencyManager {
+class TableBasedIdempotency(private val tableName: String = "_patchkit_applied") :
+    IdempotencyManager {
     override suspend fun initialize(engine: SqliteEngine) {
         engine.execute(
             """
@@ -22,20 +21,19 @@ class TableBasedIdempotency(
                 applied_at INTEGER NOT NULL,
                 metadata  TEXT
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
         engine.execute(
             """
             CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_patch_id 
             ON $tableName(patch_id)
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
     }
 
-    override suspend fun hasBeenApplied(
-        patchId: String,
-        engine: SqliteEngine,
-    ): Boolean {
+    override suspend fun hasBeenApplied(patchId: String, engine: SqliteEngine): Boolean {
         val scalar =
             engine.queryScalar(
                 "SELECT COUNT(*) FROM $tableName WHERE patch_id = ?",

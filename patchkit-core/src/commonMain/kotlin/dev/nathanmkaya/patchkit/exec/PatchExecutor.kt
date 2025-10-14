@@ -7,15 +7,12 @@ import dev.nathanmkaya.patchkit.engine.requireLong
 import dev.nathanmkaya.patchkit.model.ParameterizedSqlAction
 import dev.nathanmkaya.patchkit.model.Patch
 import dev.nathanmkaya.patchkit.model.SqlAction
-import kotlinx.coroutines.withTimeout
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlinx.coroutines.withTimeout
 
 /** Tunables for executor behavior. */
-data class ExecConfig(
-    val perActionTimeoutMs: Long = 10_000,
-    val checksInReadTx: Boolean = false,
-)
+data class ExecConfig(val perActionTimeoutMs: Long = 10_000, val checksInReadTx: Boolean = false)
 
 /**
  * Executes a Patch against a TransactionalEngine:
@@ -24,9 +21,7 @@ data class ExecConfig(
  * - Postconditions outside mutating tx (optional short read tx)
  * - Per-action and total timeouts
  */
-class PatchExecutor(
-    private val config: ExecConfig = ExecConfig(),
-) {
+class PatchExecutor(private val config: ExecConfig = ExecConfig()) {
     suspend fun execute(
         patch: Patch,
         engine: TransactionalEngine,
@@ -40,7 +35,11 @@ class PatchExecutor(
 
             try {
                 // -------- Preconditions
-                events += event(EventCode.PRECHECK_START, "Checking ${patch.preconditions.size} preconditions")
+                events +=
+                    event(
+                        EventCode.PRECHECK_START,
+                        "Checking ${patch.preconditions.size} preconditions",
+                    )
                 val runPre: suspend () -> Unit = {
                     for (c in patch.preconditions) {
                         val label = c.description ?: c.sql
@@ -48,7 +47,10 @@ class PatchExecutor(
                             try {
                                 engine.queryScalar(c.sql).requireLong(label)
                             } catch (iae: IllegalStateException) {
-                                throw PreconditionFailedException(iae.message ?: "Precondition '$label' failed: non-numeric result")
+                                throw PreconditionFailedException(
+                                    iae.message
+                                        ?: "Precondition '$label' failed: non-numeric result"
+                                )
                             }
                         if (!c.operator.evaluate(actual, c.expected)) {
                             events +=
@@ -61,12 +63,15 @@ class PatchExecutor(
                                         "operator" to c.operator.name,
                                     ),
                                 )
-                            throw PreconditionFailedException("Precondition failed: expected ${c.operator} ${c.expected}, got $actual")
+                            throw PreconditionFailedException(
+                                "Precondition failed: expected ${c.operator} ${c.expected}, got $actual"
+                            )
                         }
                         events += event(EventCode.PRECHECK_OK, c.description ?: c.sql)
                     }
                 }
-                if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPre() } else runPre()
+                if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPre() }
+                else runPre()
 
                 // -------- Actions (single tx)
                 events += event(EventCode.TX_BEGIN, "Transaction started (IMMEDIATE)")
@@ -77,10 +82,11 @@ class PatchExecutor(
                         }
                         for (a in patch.actions) {
                             val label =
-                                a.description ?: when (a) {
-                                    is SqlAction -> a.sql.take(50)
-                                    is ParameterizedSqlAction -> a.sql.take(50)
-                                }
+                                a.description
+                                    ?: when (a) {
+                                        is SqlAction -> a.sql.take(50)
+                                        is ParameterizedSqlAction -> a.sql.take(50)
+                                    }
                             events += event(EventCode.ACTION_START, label)
 
                             try {
@@ -88,7 +94,8 @@ class PatchExecutor(
                                     withTimeout(config.perActionTimeoutMs) {
                                         when (a) {
                                             is SqlAction -> engine.execute(a.sql)
-                                            is ParameterizedSqlAction -> engine.execute(a.sql, a.parameters)
+                                            is ParameterizedSqlAction ->
+                                                engine.execute(a.sql, a.parameters)
                                         }
                                     }
                                 totalRows += rows
@@ -111,7 +118,8 @@ class PatchExecutor(
                         if (dryRun) {
                             engine.execute("ROLLBACK TO patchkit_dryrun")
                             engine.execute("RELEASE patchkit_dryrun")
-                            events += event(EventCode.DRYRUN_ROLLBACK, "Dry-run rolled back changes")
+                            events +=
+                                event(EventCode.DRYRUN_ROLLBACK, "Dry-run rolled back changes")
                         }
                     }
                     events += event(EventCode.TX_COMMIT, "Transaction committed")
@@ -126,7 +134,11 @@ class PatchExecutor(
                 }
 
                 // -------- Postconditions
-                events += event(EventCode.POSTCHECK_START, "Checking ${patch.postconditions.size} postconditions")
+                events +=
+                    event(
+                        EventCode.POSTCHECK_START,
+                        "Checking ${patch.postconditions.size} postconditions",
+                    )
                 val runPost: suspend () -> Unit = {
                     for (c in patch.postconditions) {
                         val label = c.description ?: c.sql
@@ -134,7 +146,10 @@ class PatchExecutor(
                             try {
                                 engine.queryScalar(c.sql).requireLong(label)
                             } catch (iae: IllegalStateException) {
-                                throw PostconditionFailedException(iae.message ?: "Postcondition '$label' failed: non-numeric result")
+                                throw PostconditionFailedException(
+                                    iae.message
+                                        ?: "Postcondition '$label' failed: non-numeric result"
+                                )
                             }
                         if (!c.operator.evaluate(actual, c.expected)) {
                             events +=
@@ -147,12 +162,15 @@ class PatchExecutor(
                                         "operator" to c.operator.name,
                                     ),
                                 )
-                            throw PostconditionFailedException("Postcondition failed: expected ${c.operator} ${c.expected}, got $actual")
+                            throw PostconditionFailedException(
+                                "Postcondition failed: expected ${c.operator} ${c.expected}, got $actual"
+                            )
                         }
                         events += event(EventCode.POSTCHECK_OK, c.description ?: c.sql)
                     }
                 }
-                if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPost() } else runPost()
+                if (config.checksInReadTx) engine.inTransaction(immediate = false) { runPost() }
+                else runPost()
 
                 // -------- Success
                 val successEvent =
@@ -168,16 +186,18 @@ class PatchExecutor(
                         is PostconditionFailedException -> EventCode.POSTCHECK_FAIL
                         else -> EventCode.PATCH_FAILURE
                     }
-                events += event(code, t.message ?: "Patch failed", mapOf("exception" to (t::class.simpleName ?: "Exception")))
+                events +=
+                    event(
+                        code,
+                        t.message ?: "Patch failed",
+                        mapOf("exception" to (t::class.simpleName ?: "Exception")),
+                    )
                 ExecutionReport(patch.id, events, startTime, now(), affectedRows = 0)
             }
         }
 
-    private fun event(
-        code: EventCode,
-        msg: String,
-        detail: Map<String, String> = emptyMap(),
-    ) = ExecutionEvent(ts = now(), code = code, message = msg, detail = detail)
+    private fun event(code: EventCode, msg: String, detail: Map<String, String> = emptyMap()) =
+        ExecutionEvent(ts = now(), code = code, message = msg, detail = detail)
 
     @OptIn(ExperimentalTime::class)
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()

@@ -3,14 +3,9 @@ package dev.nathanmkaya.patchkit.validation
 import dev.nathanmkaya.patchkit.crypto.sha256Hex
 import dev.nathanmkaya.patchkit.model.Patch
 
-/**
- * If metadata.sha256 is present, verify it against the raw patch bytes.
- */
+/** If metadata.sha256 is present, verify it against the raw patch bytes. */
 class HashValidator : PatchValidator {
-    override suspend fun validate(
-        patch: Patch,
-        rawBytes: ByteArray?,
-    ): ValidationResult {
+    override suspend fun validate(patch: Patch, rawBytes: ByteArray?): ValidationResult {
         val expected = patch.metadata["sha256"] ?: return ValidationResult.Success
         if (rawBytes == null) {
             return ValidationResult.Failure(

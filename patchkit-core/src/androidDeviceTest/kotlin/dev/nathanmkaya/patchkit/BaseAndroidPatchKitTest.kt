@@ -15,12 +15,12 @@ import dev.nathanmkaya.patchkit.model.ParameterizedSqlAction
 import dev.nathanmkaya.patchkit.model.Patch
 import dev.nathanmkaya.patchkit.model.SqlAction
 import dev.nathanmkaya.patchkit.model.SqlArg
+import java.io.File
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 import org.junit.After
 import org.junit.Before
-import java.io.File
 
 abstract class BaseAndroidPatchKitTest {
     private lateinit var appContext: Context
@@ -42,9 +42,7 @@ abstract class BaseAndroidPatchKitTest {
     @After
     fun baseTearDown() {
         runCatching { connection.close() }
-        tempPaths.forEach { file ->
-            runCatching { file.deleteRecursively() }
-        }
+        tempPaths.forEach { file -> runCatching { file.deleteRecursively() } }
         dbFile.delete()
     }
 
@@ -84,16 +82,8 @@ abstract class BaseAndroidPatchKitTest {
             description = "Insert account $name",
         )
 
-    protected fun conditionCount(
-        table: String,
-        expected: Long,
-        label: String,
-    ) =
-        Condition(
-            sql = "SELECT COUNT(*) FROM $table",
-            expected = expected,
-            description = label,
-        )
+    protected fun conditionCount(table: String, expected: Long, label: String) =
+        Condition(sql = "SELECT COUNT(*) FROM $table", expected = expected, description = label)
 
     protected fun conditionTableAbsent(table: String) =
         Condition(
@@ -124,10 +114,12 @@ abstract class BaseAndroidPatchKitTest {
     }
 
     protected fun tableExists(name: String): Boolean {
-        connection.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?").use { stmt ->
-            stmt.bindText(1, name)
-            return stmt.step() && stmt.getInt(0) > 0
-        }
+        connection
+            .prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?")
+            .use { stmt ->
+                stmt.bindText(1, name)
+                return stmt.step() && stmt.getInt(0) > 0
+            }
     }
 
     protected fun tableRowCount(table: String): Int {
@@ -144,26 +136,32 @@ abstract class BaseAndroidPatchKitTest {
                 applied_at INTEGER NOT NULL,
                 metadata TEXT
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
         connection.execSQL(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx__patchkit_applied_patch_id ON _patchkit_applied(patch_id)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx__patchkit_applied_patch_id ON _patchkit_applied(patch_id)"
         )
     }
 
     protected fun insertIdempotencyRecord(id: String, metadata: String = "{preseeded=true}") {
         ensureIdempotencyTable()
-        connection.prepare("INSERT OR IGNORE INTO _patchkit_applied(patch_id, applied_at, metadata) VALUES(?, ?, ?)").use { stmt ->
-            stmt.bindText(1, id)
-            stmt.bindLong(2, System.currentTimeMillis())
-            stmt.bindText(3, metadata)
-            stmt.step()
-        }
+        connection
+            .prepare(
+                "INSERT OR IGNORE INTO _patchkit_applied(patch_id, applied_at, metadata) VALUES(?, ?, ?)"
+            )
+            .use { stmt ->
+                stmt.bindText(1, id)
+                stmt.bindLong(2, System.currentTimeMillis())
+                stmt.bindText(3, metadata)
+                stmt.step()
+            }
     }
 
     protected fun idempotencyRecord(id: String): String? {
         ensureIdempotencyTable()
-        connection.prepare("SELECT metadata FROM _patchkit_applied WHERE patch_id = ?").use { stmt ->
+        connection.prepare("SELECT metadata FROM _patchkit_applied WHERE patch_id = ?").use { stmt
+            ->
             stmt.bindText(1, id)
             return if (stmt.step()) stmt.getText(0) else null
         }
@@ -182,18 +180,17 @@ abstract class BaseAndroidPatchKitTest {
 
     protected fun writePatchFile(file: File, contents: String): Path {
         val path = file.absolutePath.toPath()
-        FileSystem.SYSTEM.write(path) {
-            writeUtf8(contents)
-        }
+        FileSystem.SYSTEM.write(path) { writeUtf8(contents) }
         trackPath(path)
         return path
     }
 
     protected fun createTempDir(name: String): File {
-        val dir = File(appContext.cacheDir, name).apply {
-            deleteRecursively()
-            mkdirs()
-        }
+        val dir =
+            File(appContext.cacheDir, name).apply {
+                deleteRecursively()
+                mkdirs()
+            }
         trackPath(dir.absolutePath.toPath())
         return dir
     }
@@ -202,11 +199,15 @@ abstract class BaseAndroidPatchKitTest {
         tempPaths += File(path.toString())
     }
 
-    protected suspend fun applyDirectory(path: Path, config: PatchKitConfig = PatchKitConfig()): List<ExecutionReport> =
-        patchKit(config).applyDirectory(path)
+    protected suspend fun applyDirectory(
+        path: Path,
+        config: PatchKitConfig = PatchKitConfig(),
+    ): List<ExecutionReport> = patchKit(config).applyDirectory(path)
 
-    protected suspend fun applyPath(path: Path, config: PatchKitConfig = PatchKitConfig()): ExecutionReport =
-        patchKit(config).applyPath(path)
+    protected suspend fun applyPath(
+        path: Path,
+        config: PatchKitConfig = PatchKitConfig(),
+    ): ExecutionReport = patchKit(config).applyPath(path)
 
     protected data class QueryRow(
         val text: String?,
@@ -216,10 +217,9 @@ abstract class BaseAndroidPatchKitTest {
     )
 
     private fun resetSchema() {
-        val drops = listOf("orders", "customers", "accounts", "blobs", "labels", "_patchkit_applied")
-        drops.forEach { table ->
-            connection.execSQL("DROP TABLE IF EXISTS $table")
-        }
+        val drops =
+            listOf("orders", "customers", "accounts", "blobs", "labels", "_patchkit_applied")
+        drops.forEach { table -> connection.execSQL("DROP TABLE IF EXISTS $table") }
         connection.execSQL(
             """
             CREATE TABLE accounts (
@@ -227,7 +227,8 @@ abstract class BaseAndroidPatchKitTest {
                 name TEXT NOT NULL UNIQUE,
                 balance INTEGER NOT NULL
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
         connection.execSQL(
             """
@@ -235,7 +236,8 @@ abstract class BaseAndroidPatchKitTest {
                 customer_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
         connection.execSQL(
             """
@@ -245,7 +247,8 @@ abstract class BaseAndroidPatchKitTest {
                 amount INTEGER NOT NULL,
                 FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
         connection.execSQL(
             """
@@ -256,7 +259,8 @@ abstract class BaseAndroidPatchKitTest {
                 real_col REAL,
                 blob_col BLOB
             )
-            """.trimIndent(),
+            """
+                .trimIndent()
         )
     }
 }

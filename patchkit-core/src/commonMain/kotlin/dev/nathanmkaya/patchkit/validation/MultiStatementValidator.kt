@@ -11,10 +11,7 @@ import dev.nathanmkaya.patchkit.model.SqlAction
  * - Ignores semicolons inside quotes.
  */
 class MultiStatementValidator : PatchValidator {
-    override suspend fun validate(
-        patch: Patch,
-        rawBytes: ByteArray?,
-    ): ValidationResult {
+    override suspend fun validate(patch: Patch, rawBytes: ByteArray?): ValidationResult {
         for (action in patch.actions) {
             val sql =
                 when (action) {

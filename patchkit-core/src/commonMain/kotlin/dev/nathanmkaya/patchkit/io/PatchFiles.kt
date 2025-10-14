@@ -8,7 +8,9 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
 
 /** Apply a patch from a filesystem path (JVM). */
-suspend fun PatchKit.applyFile(path: Path): ExecutionReport = apply(SystemFileSystem.source(path).buffered().readByteArray())
+suspend fun PatchKit.applyFile(path: Path): ExecutionReport =
+    apply(SystemFileSystem.source(path).buffered().readByteArray())
 
 /** Apply patches from multiple files, in order. */
-suspend fun PatchKit.applyFiles(paths: List<Path>): List<ExecutionReport> = paths.map { applyFile(it) }
+suspend fun PatchKit.applyFiles(paths: List<Path>): List<ExecutionReport> =
+    paths.map { applyFile(it) }

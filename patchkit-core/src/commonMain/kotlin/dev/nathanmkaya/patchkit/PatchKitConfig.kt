@@ -13,24 +13,30 @@ import dev.nathanmkaya.patchkit.validation.DmlOnlyValidator
 import dev.nathanmkaya.patchkit.validation.HashValidator
 import dev.nathanmkaya.patchkit.validation.MultiStatementValidator
 import dev.nathanmkaya.patchkit.validation.PatchValidator
+import dev.nathanmkaya.patchkit.validation.SelectActionValidator
 import dev.nathanmkaya.patchkit.validation.SizeValidator
 import dev.nathanmkaya.patchkit.validation.ValidationResult
-import dev.nathanmkaya.patchkit.validation.SelectActionValidator
-import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlinx.serialization.json.Json
 
 /**
  * Configuration for PatchKit behavior and security policies.
  *
- * @param allowDDL Whether to allow DDL operations (CREATE, ALTER, DROP). Default is false for security.
+ * @param allowDDL Whether to allow DDL operations (CREATE, ALTER, DROP). Default is false for
+ *   security.
  * @param maxBytes Maximum patch size in bytes to prevent resource exhaustion. Default is 512KB.
  * @param maxActions Maximum number of actions per patch to limit transaction scope. Default is 200.
- * @param perActionTimeoutMs Timeout for individual action execution in milliseconds. Default is 10 seconds.
- * @param totalTimeoutMs Total timeout for entire patch execution in milliseconds. Default is 60 seconds.
- * @param verifyHash Whether to verify SHA-256 hash in patch metadata for integrity. Default is true.
- * @param checksInReadTx Whether to run pre/post conditions within read transactions. Default is false.
- * @param idempotency Manager for preventing duplicate patch application. Default uses table-based tracking.
+ * @param perActionTimeoutMs Timeout for individual action execution in milliseconds. Default is 10
+ *   seconds.
+ * @param totalTimeoutMs Total timeout for entire patch execution in milliseconds. Default is 60
+ *   seconds.
+ * @param verifyHash Whether to verify SHA-256 hash in patch metadata for integrity. Default is
+ *   true.
+ * @param checksInReadTx Whether to run pre/post conditions within read transactions. Default is
+ *   false.
+ * @param idempotency Manager for preventing duplicate patch application. Default uses table-based
+ *   tracking.
  * @param json JSON configuration for patch deserialization. Default uses strict parsing.
  */
 data class PatchKitConfig(
@@ -54,7 +60,8 @@ data class PatchKitConfig(
  *
  * ## Key Features:
  * - **Transactional Safety**: All patches execute within ACID transactions with automatic rollback
- * - **Comprehensive Validation**: Multi-layered validation including size, hash, and DDL restrictions
+ * - **Comprehensive Validation**: Multi-layered validation including size, hash, and DDL
+ *   restrictions
  * - **Idempotency**: Prevents duplicate patch application through pluggable management
  * - **Security-First**: Configurable restrictions on dangerous SQL operations
  * - **Detailed Auditing**: Complete execution timeline with machine-readable event codes
@@ -66,7 +73,7 @@ data class PatchKitConfig(
  *     registry = mapOf("main" to EngineProvider { createEngine() }),
  *     config = config
  * )
- * 
+ *
  * val report = patchKit.apply(patchJsonBytes)
  * if (report.success) {
  *     println("Patch applied successfully: ${report.affectedRows} rows affected")
@@ -80,21 +87,20 @@ class PatchKit(
     private val registry: Map<String, EngineProvider>,
     private val config: PatchKitConfig = PatchKitConfig(),
 ) {
-    private val validators: List<PatchValidator> =
-        buildList {
-            add(SizeValidator(config.maxBytes, config.maxActions))
-            add(MultiStatementValidator())
-            if (config.verifyHash) add(HashValidator())
-            if (!config.allowDDL) add(DmlOnlyValidator())
-            add(SelectActionValidator())
-        }
+    private val validators: List<PatchValidator> = buildList {
+        add(SizeValidator(config.maxBytes, config.maxActions))
+        add(MultiStatementValidator())
+        if (config.verifyHash) add(HashValidator())
+        if (!config.allowDDL) add(DmlOnlyValidator())
+        add(SelectActionValidator())
+    }
 
     private val executor =
         PatchExecutor(
             ExecConfig(
                 perActionTimeoutMs = config.perActionTimeoutMs,
                 checksInReadTx = config.checksInReadTx,
-            ),
+            )
         )
 
     /**
@@ -103,38 +109,41 @@ class PatchKit(
      * This method orchestrates the complete patch application lifecycle:
      * 1. **Parse**: Deserialize JSON patch with strict validation
      * 2. **Validate**: Run validation chain (size, hash, DDL restrictions, etc.)
-     * 3. **Idempotency Check**: Skip if patch already applied successfully (disabled in dry-run mode)
+     * 3. **Idempotency Check**: Skip if patch already applied successfully (disabled in dry-run
+     *    mode)
      * 4. **Preconditions**: Verify database state meets patch requirements
-     * 5. **Execute Actions**: Run all actions within single IMMEDIATE transaction (dry runs wrap actions in a savepoint and roll back)
+     * 5. **Execute Actions**: Run all actions within single IMMEDIATE transaction (dry runs wrap
+     *    actions in a savepoint and roll back)
      * 6. **Postconditions**: Validate resulting database state
-     * 7. **Record Success**: Mark patch as applied for future idempotency (disabled in dry-run mode)
+     * 7. **Record Success**: Mark patch as applied for future idempotency (disabled in dry-run
+     *    mode)
      *
      * All actions execute within a single ACID transaction. If any step fails, the entire
      * transaction rolls back and no changes are persisted.
      *
      * @param rawPatchBytes The JSON patch as byte array
-     * @param dryRun When true, executes actions inside a savepoint and rolls back instead of committing;
-     *               idempotency bookkeeping is skipped and the resulting report omits PATCH_SUCCESS.
+     * @param dryRun When true, executes actions inside a savepoint and rolls back instead of
+     *   committing; idempotency bookkeeping is skipped and the resulting report omits
+     *   PATCH_SUCCESS.
      * @return ExecutionReport containing detailed timeline, success status, and affected row count
      * @throws IllegalArgumentException if patch targets an unknown database
      */
-    suspend fun apply(
-        rawPatchBytes: ByteArray,
-        dryRun: Boolean = false,
-    ): ExecutionReport {
+    suspend fun apply(rawPatchBytes: ByteArray, dryRun: Boolean = false): ExecutionReport {
         val start = now()
         val events = mutableListOf<ExecutionEvent>()
 
         return try {
             // --- Parse
-            val patch = config.json.decodeFromString(Patch.serializer(), rawPatchBytes.decodeToString())
+            val patch =
+                config.json.decodeFromString(Patch.serializer(), rawPatchBytes.decodeToString())
 
             // --- Validate
             for (v in validators) {
                 when (val res = v.validate(patch, rawPatchBytes)) {
                     is ValidationResult.Success -> Unit
                     is ValidationResult.Failure -> {
-                        events += event(EventCode.VALIDATION_FAIL, res.message, mapOf("code" to res.code))
+                        events +=
+                            event(EventCode.VALIDATION_FAIL, res.message, mapOf("code" to res.code))
                         return ExecutionReport(patch.id, events, start, now())
                     }
                 }
@@ -179,9 +188,6 @@ class PatchKit(
     @OptIn(ExperimentalTime::class)
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
-    private fun event(
-        code: EventCode,
-        msg: String,
-        detail: Map<String, String> = emptyMap(),
-    ) = ExecutionEvent(ts = now(), code = code, message = msg, detail = detail)
+    private fun event(code: EventCode, msg: String, detail: Map<String, String> = emptyMap()) =
+        ExecutionEvent(ts = now(), code = code, message = msg, detail = detail)
 }

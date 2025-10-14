@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 /**
  * Base interface for SQL actions that can be executed within a patch.
  *
- * Actions are polymorphic and serialized with a "type" discriminator in JSON.
- * All actions are executed within a single ACID transaction, ensuring atomicity.
+ * Actions are polymorphic and serialized with a "type" discriminator in JSON. All actions are
+ * executed within a single ACID transaction, ensuring atomicity.
  */
 @Serializable
 sealed interface Action {
@@ -18,9 +18,9 @@ sealed interface Action {
 /**
  * A direct SQL action that executes raw SQL statements.
  *
- * This action type executes SQL directly without parameter binding. Use with caution
- * in production environments, as it doesn't provide protection against SQL injection
- * if user input is involved. Prefer [ParameterizedSqlAction] for better security.
+ * This action type executes SQL directly without parameter binding. Use with caution in production
+ * environments, as it doesn't provide protection against SQL injection if user input is involved.
+ * Prefer [ParameterizedSqlAction] for better security.
  *
  * ## Example JSON:
  * ```json
@@ -36,17 +36,14 @@ sealed interface Action {
  */
 @Serializable
 @SerialName("SqlAction")
-data class SqlAction(
-    val sql: String,
-    override val description: String? = null,
-) : Action
+data class SqlAction(val sql: String, override val description: String? = null) : Action
 
 /**
  * A parameterized SQL action that uses strongly-typed parameters for safe execution.
  *
- * This action type uses parameter placeholders (?) in SQL with strongly-typed arguments,
- * providing protection against SQL injection and ensuring type safety across platforms.
- * This is the recommended action type for production use.
+ * This action type uses parameter placeholders (?) in SQL with strongly-typed arguments, providing
+ * protection against SQL injection and ensuring type safety across platforms. This is the
+ * recommended action type for production use.
  *
  * ## Example JSON:
  * ```json

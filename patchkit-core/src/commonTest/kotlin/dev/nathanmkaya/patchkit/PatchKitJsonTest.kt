@@ -5,11 +5,11 @@ import dev.nathanmkaya.patchkit.model.ParameterizedSqlAction
 import dev.nathanmkaya.patchkit.model.Patch
 import dev.nathanmkaya.patchkit.model.SqlAction
 import dev.nathanmkaya.patchkit.model.SqlArg
-import kotlinx.serialization.SerializationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlinx.serialization.SerializationException
 
 class PatchKitJsonTest {
     @Test
@@ -25,7 +25,8 @@ class PatchKitJsonTest {
               ],
               "metadata": { "sha256": "deadbeef" }
             }
-            """.trimIndent()
+            """
+                .trimIndent()
 
         val patch = PatchKitJson.strict.decodeFromString<Patch>(json)
 
@@ -60,7 +61,8 @@ class PatchKitJsonTest {
                 }
               ]
             }
-            """.trimIndent()
+            """
+                .trimIndent()
 
         val patch = PatchKitJson.strict.decodeFromString<Patch>(json)
         val act = patch.actions.single() as ParameterizedSqlAction
@@ -89,10 +91,7 @@ class PatchKitJsonTest {
                     listOf(
                         ParameterizedSqlAction(
                             sql = "UPDATE t SET b = ?",
-                            parameters =
-                                listOf(
-                                    SqlArg.Blob(byteArrayOf(1, 2, 3, 4)),
-                                ),
+                            parameters = listOf(SqlArg.Blob(byteArrayOf(1, 2, 3, 4))),
                         ),
                         SqlAction("UPDATE t SET x = 1"),
                     ),
@@ -123,7 +122,8 @@ class PatchKitJsonTest {
               ],
               "actions": [ { "type": "SqlAction", "sql": "UPDATE t SET x = 1" } ]
             }
-            """.trimIndent()
+            """
+                .trimIndent()
 
         val patch = PatchKitJson.strict.decodeFromString<Patch>(json)
         val cond = patch.preconditions.single()
@@ -142,7 +142,8 @@ class PatchKitJsonTest {
               "bogus": 123,
               "actions": [ { "type": "SqlAction", "sql": "UPDATE t SET x = 1" } ]
             }
-            """.trimIndent()
+            """
+                .trimIndent()
 
         assertFailsWith<SerializationException> {
             PatchKitJson.strict.decodeFromString<Patch>(json)
@@ -159,7 +160,8 @@ class PatchKitJsonTest {
               "target": "main",
               "actions": [ { "type": "SqlAction", "sql": "UPDATE t SET x = 1" } ]
             }
-            """.trimIndent()
+            """
+                .trimIndent()
 
         // The data class init { require(version == 1) } should throw IllegalArgumentException
         assertFailsWith<IllegalArgumentException> {

@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
  * A database patch containing SQL operations with validation and safety checks.
  *
  * Patches are JSON-serializable units of database changes that execute within ACID transactions.
- * They support preconditions for safety, actions for the actual changes, and postconditions
- * for validation. All operations are executed atomically - either all succeed or all rollback.
+ * They support preconditions for safety, actions for the actual changes, and postconditions for
+ * validation. All operations are executed atomically - either all succeed or all rollback.
  *
  * ## Example JSON:
  * ```json
@@ -76,9 +76,9 @@ data class Patch(
 /**
  * A condition that must be satisfied for patch execution to proceed.
  *
- * Conditions are SQL queries that return a single numeric value, which is then compared
- * against an expected value using the specified operator. They are used for both
- * preconditions (checked before execution) and postconditions (checked after execution).
+ * Conditions are SQL queries that return a single numeric value, which is then compared against an
+ * expected value using the specified operator. They are used for both preconditions (checked before
+ * execution) and postconditions (checked after execution).
  *
  * @param sql SQL query that must return exactly one row with one numeric column
  * @param operator Comparison operator to use for evaluation
@@ -102,17 +102,21 @@ data class Condition(
 enum class ComparisonOperator {
     /** Actual value must equal expected value */
     EQUALS,
+
     /** Actual value must not equal expected value */
     NOT_EQUALS,
+
     /** Actual value must be greater than expected value */
     GREATER_THAN,
+
     /** Actual value must be greater than or equal to expected value */
     GREATER_OR_EQUAL,
+
     /** Actual value must be less than expected value */
     LESS_THAN,
+
     /** Actual value must be less than or equal to expected value */
-    LESS_OR_EQUAL,
-    ;
+    LESS_OR_EQUAL;
 
     /**
      * Evaluate whether the condition passes given actual and expected values.
@@ -121,10 +125,7 @@ enum class ComparisonOperator {
      * @param expected The expected value from the condition
      * @return true if the condition passes, false if it fails
      */
-    fun evaluate(
-        actual: Long,
-        expected: Long,
-    ): Boolean =
+    fun evaluate(actual: Long, expected: Long): Boolean =
         when (this) {
             EQUALS -> actual == expected
             NOT_EQUALS -> actual != expected
